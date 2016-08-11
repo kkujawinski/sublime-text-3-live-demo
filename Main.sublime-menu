@@ -1,16 +1,17 @@
 [
-    // {
-    //     "id": "tools",
-    //     "children":
-    //     [
-    //         {
-    //             "caption": "Live Demo",
-    //             "children":
-    //             [
-    //                 { "caption": "Command name", "command": "live_demo_do" }
-    //             ]
-    //         }
-    //     ]
+    {
+        "id": "tools",
+        "children":
+        [
+            {
+                "caption": "Live Demo",
+                "children":
+                [
+                    { "caption": "Command name", "command": "live_demo_do" }
+                ]
+            }
+        ]
+    }
     // },
     // {
     //     "caption": "Preferences",

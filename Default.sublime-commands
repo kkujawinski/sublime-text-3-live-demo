@@ -1,68 +1,76 @@
 [
-    // {
-    //     "caption": "Preferences: Live Demo Settings – Default",
-    //     "command": "open_file", "args":
-    //     {
-    //         "file": "${packages}/Live Demo/Live Demo.sublime-settings"
-    //     }
-    // },
-    // {
-    //     "caption": "Preferences: Live Demo Settings – User",
-    //     "command": "open_file", "args":
-    //     {
-    //         "file": "${packages}/User/Live Demo.sublime-settings"
-    //     }
-    // },
-    // {
-    //     "caption": "Preferences: Live Demo Key Bindings – Default",
-    //     "command": "open_file", "args":
-    //     {
-    //         "file": "${packages}/Live Demo/Default (Linux).sublime-keymap",
-    //         "platform": "Linux"
-    //     }
-    // },
-    // {
-    //     "caption": "Preferences: Live Demo Key Bindings – User",
-    //     "command": "open_file", "args":
-    //     {
-    //         "file": "${packages}/User/Default (Linux).sublime-keymap",
-    //         "platform": "Linux"
-    //     }
-    // },
-    // {
-    //     "caption": "Preferences: Live Demo Key Bindings – Default",
-    //     "command": "open_file", "args":
-    //     {
-    //         "file": "${packages}/Live Demo/Default (OSX).sublime-keymap",
-    //         "platform": "OSX"
-    //     }
-    // },
-    // {
-    //     "caption": "Preferences: Live Demo Key Bindings – User",
-    //     "command": "open_file", "args":
-    //     {
-    //         "file": "${packages}/User/Default (OSX).sublime-keymap",
-    //         "platform": "OSX"
-    //     }
-    // },
-    // {
-    //     "caption": "Preferences: Live Demo Key Bindings – Default",
-    //     "command": "open_file", "args":
-    //     {
-    //         "file": "${packages}/Live Demo/Default (Windows).sublime-keymap",
-    //         "platform": "Windows"
-    //     }
-    // },
-    // {
-    //     "caption": "Preferences: Live Demo Key Bindings – User",
-    //     "command": "open_file", "args":
-    //     {
-    //         "file": "${packages}/User/Default (Windows).sublime-keymap",
-    //         "platform": "Windows"
-    //     }
-    // },
-    // {
-    //     "caption": "Live Demo: Command name",
-    //     "command": "live_demo_do"
-    // }
+    {
+        "caption": "Preferences: Live Demo Settings – Default",
+        "command": "open_file", "args":
+        {
+            "file": "${packages}/Live Demo/Live Demo.sublime-settings"
+        }
+    },
+    {
+        "caption": "Preferences: Live Demo Settings – User",
+        "command": "open_file", "args":
+        {
+            "file": "${packages}/User/Live Demo.sublime-settings"
+        }
+    },
+    {
+        "caption": "Preferences: Live Demo Key Bindings – Default",
+        "command": "open_file", "args":
+        {
+            "file": "${packages}/Live Demo/Default (Linux).sublime-keymap",
+            "platform": "Linux"
+        }
+    },
+    {
+        "caption": "Preferences: Live Demo Key Bindings – User",
+        "command": "open_file", "args":
+        {
+            "file": "${packages}/User/Default (Linux).sublime-keymap",
+            "platform": "Linux"
+        }
+    },
+    {
+        "caption": "Preferences: Live Demo Key Bindings – Default",
+        "command": "open_file", "args":
+        {
+            "file": "${packages}/Live Demo/Default (OSX).sublime-keymap",
+            "platform": "OSX"
+        }
+    },
+    {
+        "caption": "Preferences: Live Demo Key Bindings – User",
+        "command": "open_file", "args":
+        {
+            "file": "${packages}/User/Default (OSX).sublime-keymap",
+            "platform": "OSX"
+        }
+    },
+    {
+        "caption": "Preferences: Live Demo Key Bindings – Default",
+        "command": "open_file", "args":
+        {
+            "file": "${packages}/Live Demo/Default (Windows).sublime-keymap",
+            "platform": "Windows"
+        }
+    },
+    {
+        "caption": "Preferences: Live Demo Key Bindings – User",
+        "command": "open_file", "args":
+        {
+            "file": "${packages}/User/Default (Windows).sublime-keymap",
+            "platform": "Windows"
+        }
+    },
+    {
+         "caption": "Live Demo: Play",
+         "command": "live_demo_play"
+    },
+    {
+         "caption": "Live Demo: Next step",
+         "command": "live_demo_next_step"
+    },
+    {
+         "caption": "Live Demo: Stop",
+         "command": "live_demo_stop"
+    },
 ]

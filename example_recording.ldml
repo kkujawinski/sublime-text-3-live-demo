@@ -1,0 +1,55 @@
+<recording xmlns="http://digit11.com/live_demo">
+    <step>
+        <filename>my_tests.py</filename>
+        <method>PASTE</method>
+        <diff><![CDATA[
+@@ -0,0 +1,746 @@
++import sys%0Aimport time%0Aimport unittest%0Aimport diff_match_patch as dmp_module%0A# Force a module reload.  Allows one to edit the DMP module and rerun the tests%0A# without leaving the Python interpreter.%0Areload(dmp_module)%0A%0Aclass DiffMatchPatchTest(unittest.TestCase):%0A%0A  def setUp(self):%0A    %22Test harness for dmp_module.%22%0A    self.dmp = dmp_module.diff_match_patch()%0A%0A  def diff_rebuildtexts(self, diffs):%0A    # Construct the two texts which made up the diff originally.%0A    text1 = %22%22%0A    text2 = %22%22%0A    for x in range(0, len(diffs)):%0A      if diffs%5Bx%5D%5B0%5D != dmp_module.diff_match_patch.DIFF_INSERT:%0A        text1 += diffs%5Bx%5D%5B1%5D%0A      if diffs%5Bx%5D%5B0%5D != dmp_module.diff_match_patch.DIFF_DELETE:%0A        text2 += diffs%5Bx%5D%5B1%5D%0A    return (text1, text2)
+        ]]></diff>
+    </step>
+    <step>
+        <filename>my_tests.py</filename>
+        <diff><![CDATA[
+@@ -8,35 +8,33 @@
+ sys%0A
+-import 
++from date
+ time
+-%0A
++ 
+ import 
+-unittest
++time
+ %0Aimp
+@@ -193,27 +193,8 @@
+ ter.
+-%0Areload(dmp_module)
+ %0A%0Acl
+@@ -252,16 +252,21 @@
+ etUp
++Class
+ (self):%0A
+@@ -265,43 +265,8 @@
+ f):%0A
+-    %22Test harness for dmp_module.%22%0A
+@@ -418,18 +418,21 @@
+     
+-text1 = %22%22
++# New comment
+ %0A   
+@@ -436,17 +436,17 @@
+     text
+-2
++1
+  = %22%22%0A  
+@@ -576,102 +576,8 @@
+ %5B1%5D%0A
+-      if diffs%5Bx%5D%5B0%5D != dmp_module.diff_match_patch.DIFF_DELETE:%0A        text2 += diffs%5Bx%5D%5B1%5D%0A
+@@ -587,18 +587,9 @@
+ urn 
+-(
+ text1
+-, text2)
+        ]]></diff>
+    </step>
+</recording>
