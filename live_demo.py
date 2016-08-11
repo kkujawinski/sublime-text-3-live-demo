@@ -1,18 +1,40 @@
-from collections import deque
-import pickle
+"""
+TODO:
+1. Recorder
+2. Error messages
+3. Status bar
+"""
+
+import hashlib
 import os.path
+import pickle
 import random
+import tempfile
+from collections import deque
 
 import sublime
 import sublime_plugin
 
 from . import ldml
 
+class LiveDemoLoadCommand(sublime_plugin.TextCommand):
+    def run(self, edit):
+        recording = ldml.parse(self.view.file_name())
+        processor = ExecutionProcessor(recording, SublimeTextHelpers(edit).get_base_dir())
+        processor.save()
+
+
+class LiveDemoResetCommand(sublime_plugin.TextCommand):
+    def run(self, edit):
+        recording = ldml.parse(self.view.file_name())
+        processor = ExecutionProcessor(recording, SublimeTextHelpers(edit).get_base_dir())
+        processor.reset()
+
 
 class LiveDemoPlayCommand(sublime_plugin.TextCommand):
     def run(self, edit):
-        recording = ldml.parse('/Users/kkuj/Workspace/Live Demo/example_recording.ldml')
-        processor = ExecutionProcessor(recording)
+        recording = ldml.parse(self.view.file_name())
+        processor = ExecutionProcessor(recording, SublimeTextHelpers(edit).get_base_dir())
         processor.next_step()
         processor.save()
         self.view.run_command("live_demo_play_sub")
@@ -20,7 +42,7 @@ class LiveDemoPlayCommand(sublime_plugin.TextCommand):
 
 class LiveDemoNextStep(sublime_plugin.TextCommand):
     def run(self, edit):
-        processor = ExecutionProcessor.read()
+        processor = ExecutionProcessor.read(SublimeTextHelpers(edit).get_base_dir())
         processor.next_step()
         processor.save()
         self.view.run_command("live_demo_play_sub")
@@ -28,13 +50,13 @@ class LiveDemoNextStep(sublime_plugin.TextCommand):
 
 class LiveDemoStopCommand(sublime_plugin.TextCommand):
     def run(self, edit):
-        ExecutionProcessor.stop()
+        ExecutionProcessor.read(SublimeTextHelpers(edit).get_base_dir()).stop()
 
 
 class LiveDemoPlaySubCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         self.helper = SublimeTextHelpers(edit)
-        processor = ExecutionProcessor.read()
+        processor = ExecutionProcessor.read(self.helper.get_base_dir())
         if processor is None:
             return
         instruction = processor.next_instruction()
@@ -73,9 +95,13 @@ class SublimeTextHelpers(object):
         self.edit = edit
         self.window = sublime.active_window()
 
+    def get_base_dir(self):
+        return sublime.active_window().folders()[0]
+
     def open_file_tab(self, filename):
         try:
-            return self.window.open_file(filename)
+            file_path = os.path.join(self.get_base_dir(), filename)
+            return self.window.open_file(file_path)
         except:
             return self.window.new_file()
 
@@ -108,30 +134,37 @@ class ExecutionProcessor(object):
     INSERT = 6  # insert character, args: delay, character
 
     DEFAULT_DELAY = 70
-    EXECUTION_STATE_FILE = '/tmp/sublime-live-demo-execution'
+    EXECUTION_STATE_FILE = os.path.join(tempfile.gettempdir(), 'sublime-live-demo-execution')
 
-    def __init__(self, recording):
+    def __init__(self, recording, base_dir):
         self.recording = recording
         self.current_step = None
         self.instructions = None
         self.changes = None
-        self.open_file = None
+        self.base_dir = base_dir
 
-    def next_step(self):
+    def next_step(self, step=None):
         if self.current_step is None:
             self.current_step = 0
         else:
             self.current_step = self.current_step + 1
-        step = self.recording.steps[self.current_step]
-        if self.open_file is None:
-            # TODO reading proper file or string
-            filepath = '/Users/kkuj/Workspace/Live Demo/' + step.filename
+        try:
+            step = self.recording.steps[self.current_step]
+        except IndexError:
+            ExecutionProcessor.stop(self.base_dir)
+            return
+
+        filepath = os.path.join(self.base_dir, step.filename)
+        basedir = os.path.dirname(filepath)
+        if not os.path.exists(basedir):
+            os.makedirs(basedir)
+
+        if step.empty:
             with open(filepath, 'w'):
                 pass
             init_text = ''
-            self.open_file = filepath
         else:
-            with open(self.open_file, 'r') as f:
+            with open(filepath, 'r') as f:
                 init_text = f.read()
         self.instructions = deque([(self.OPEN, self.DEFAULT_DELAY, step.filename)])
         self.instructions.extend(self.prepare_instructions(step, init_text))
@@ -161,16 +194,26 @@ class ExecutionProcessor(object):
         finally:
             self.save()
 
-    def save(self):
-        pickle.dump(self, open(self.EXECUTION_STATE_FILE, "wb"))
-
     @classmethod
-    def read(cls):
+    def state_filepath(cls, base_dir):
+        return cls.EXECUTION_STATE_FILE + hashlib.md5(base_dir.encode('utf-8')).hexdigest()
+
+    def save(self):
+        pickle.dump(self, open(ExecutionProcessor.state_filepath(self.base_dir), "wb"))
+
+    def reset(self):
+        self.current_step = None
+        self.save()
+
+    def stop(self):
         try:
-            return pickle.load(open(cls.EXECUTION_STATE_FILE, "rb"))
+            os.unlink(ExecutionProcessor.state_filepath(self.base_dir))
         except:
             pass
 
     @classmethod
-    def stop(cls):
-        os.unlink(cls.EXECUTION_STATE_FILE)
+    def read(cls, base_dir):
+        try:
+            return pickle.load(open(ExecutionProcessor.state_filepath(base_dir), "rb"))
+        except:
+            pass

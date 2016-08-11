@@ -66,6 +66,14 @@
          "command": "live_demo_play"
     },
     {
+         "caption": "Live Demo: Load",
+         "command": "live_demo_load"
+    },
+    {
+         "caption": "Live Demo: Reset",
+         "command": "live_demo_reset"
+    },
+    {
          "caption": "Live Demo: Next step",
          "command": "live_demo_next_step"
     },

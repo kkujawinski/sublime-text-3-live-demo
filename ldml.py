@@ -10,10 +10,11 @@ class LDMLStep(object):
     PASTE = 'PASTE'
     TYPE = 'TYPE'
 
-    def __init__(self, filename, diffs, method=None):
+    def __init__(self, filename, diffs, method=None, empty=False):
         self.filename = filename
         self.diffs = diffs
         self.method = method or self.TYPE
+        self.empty = False if empty is None else empty
 
     def process_changes(self, init_text):
         final_text, _ = dmp.patch_apply(self.diffs, init_text)
@@ -23,10 +24,12 @@ class LDMLStep(object):
     @classmethod
     def create_from_etree(cls, etree):
         method_element = etree.find(NS + 'method')
+        empty_element = etree.find(NS + 'empty')
         return cls(
             filename=etree.find(NS + 'filename').text.strip(),
             diffs=dmp.patch_fromText(etree.find(NS + 'diff').text.strip()),
-            method=None if method_element is None else method_element.text.strip().upper()
+            method=None if method_element is None else method_element.text.strip().upper(),
+            empty=None if empty_element is None else empty_element.text.lower() in ('true', '1', 'yes')
         )
 
 
