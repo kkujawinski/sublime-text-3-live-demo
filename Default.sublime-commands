@@ -61,10 +61,14 @@
             "platform": "Windows"
         }
     },
-    {
-         "caption": "Live Demo: Play",
-         "command": "live_demo_play"
-    },
+    // {
+    //      "caption": "Live Demo: Pause",
+    //      "command": "live_demo_pause"
+    // },
+    // {
+    //      "caption": "Live Demo: Resume",
+    //      "command": "live_demo_resume"
+    // },
     {
          "caption": "Live Demo: Load",
          "command": "live_demo_load"
@@ -74,7 +78,7 @@
          "command": "live_demo_reset"
     },
     {
-         "caption": "Live Demo: Next step",
+         "caption": "Live Demo: Play next step",
          "command": "live_demo_next_step"
     },
     {

@@ -17,35 +17,47 @@ import sublime_plugin
 
 from . import ldml
 
+
 class LiveDemoLoadCommand(sublime_plugin.TextCommand):
     def run(self, edit):
-        recording = ldml.parse(self.view.file_name())
-        processor = ExecutionProcessor(recording, SublimeTextHelpers(edit).get_base_dir())
-        processor.save()
+        filename = self.view.file_name()
+        base_filename = os.path.basename(filename)
+        helper = SublimeTextHelpers(edit)
+        try:
+            recording = ldml.parse(filename)
+        except Exception as e:
+            helper.error_message('Error loading recording file %s.\n\n%r' % (base_filename, e))
+        else:
+            processor = ExecutionProcessor(recording, SublimeTextHelpers(edit).get_base_dir())
+            processor.save()
+            msg = 'Loaded %d steps.\n\n Run "Play next step" command to start.'
+            helper.message_dialog(msg % processor.total_steps)
 
 
 class LiveDemoResetCommand(sublime_plugin.TextCommand):
     def run(self, edit):
-        recording = ldml.parse(self.view.file_name())
-        processor = ExecutionProcessor(recording, SublimeTextHelpers(edit).get_base_dir())
-        processor.reset()
-
-
-class LiveDemoPlayCommand(sublime_plugin.TextCommand):
-    def run(self, edit):
-        recording = ldml.parse(self.view.file_name())
-        processor = ExecutionProcessor(recording, SublimeTextHelpers(edit).get_base_dir())
-        processor.next_step()
-        processor.save()
-        self.view.run_command("live_demo_play_sub")
+        helper = SublimeTextHelpers(edit)
+        processor = ExecutionProcessor.read(SublimeTextHelpers(edit).get_base_dir())
+        try:
+            processor.reset()
+        except:
+            helper.error_message('Can\'t reset. No recording file is currently loaded')
+        else:
+            helper.message_dialog('Reseted')
 
 
 class LiveDemoNextStep(sublime_plugin.TextCommand):
     def run(self, edit):
+        helper = SublimeTextHelpers(edit)
         processor = ExecutionProcessor.read(SublimeTextHelpers(edit).get_base_dir())
-        processor.next_step()
-        processor.save()
-        self.view.run_command("live_demo_play_sub")
+        try:
+            processor.next_step()
+        except Exception as e:
+            helper.error_message('No next step defined.')
+            processor.stop()
+        else:
+            processor.save()
+            self.view.run_command("live_demo_play_sub")
 
 
 class LiveDemoStopCommand(sublime_plugin.TextCommand):
@@ -61,9 +73,11 @@ class LiveDemoPlaySubCommand(sublime_plugin.TextCommand):
             return
         instruction = processor.next_instruction()
         if instruction:
-            self.execute_instruction(instruction)
+            self.execute_instruction(instruction, processor.step_progress())
+        else:
+            self.helper.set_status(self.view, '')
 
-    def execute_instruction(self, instruction):
+    def execute_instruction(self, instruction, progress):
         target_view = self.view
         command, delay = instruction[:2]
         randomness_factor = 2 * random.random()
@@ -87,6 +101,10 @@ class LiveDemoPlaySubCommand(sublime_plugin.TextCommand):
             character, = args
             self.helper.write(target_view, character)
 
+        total_chars = 20
+        full_chars = int(progress * total_chars)
+        message = 'Step progress: |' + '#' * full_chars + '-' * (total_chars - full_chars) + '|'
+        self.helper.set_status(target_view, message)
         sublime.set_timeout(lambda: target_view.run_command("live_demo_play_sub"), delay)
 
 
@@ -97,6 +115,12 @@ class SublimeTextHelpers(object):
 
     def get_base_dir(self):
         return sublime.active_window().folders()[0]
+
+    def error_message(self, text):
+        sublime.error_message(text)
+
+    def message_dialog(self, text):
+        sublime.message_dialog(text)
 
     def open_file_tab(self, filename):
         try:
@@ -113,6 +137,9 @@ class SublimeTextHelpers(object):
     def set_cursor(self, view, position):
         view.sel().clear()
         view.sel().add(sublime.Region(position))
+
+    def set_status(self, view, text):
+        view.set_status('live_demo', text)
 
     def increase_selection(self, view, step=1):
         selection = view.sel()[0]
@@ -142,17 +169,16 @@ class ExecutionProcessor(object):
         self.instructions = None
         self.changes = None
         self.base_dir = base_dir
+        self.total_steps = len(recording.steps)
+        self.step_completed_instructions = None
+        self.step_total_instructions = None
 
     def next_step(self, step=None):
         if self.current_step is None:
             self.current_step = 0
         else:
             self.current_step = self.current_step + 1
-        try:
-            step = self.recording.steps[self.current_step]
-        except IndexError:
-            ExecutionProcessor.stop(self.base_dir)
-            return
+        step = self.recording.steps[self.current_step]
 
         filepath = os.path.join(self.base_dir, step.filename)
         basedir = os.path.dirname(filepath)
@@ -168,6 +194,8 @@ class ExecutionProcessor(object):
                 init_text = f.read()
         self.instructions = deque([(self.OPEN, self.DEFAULT_DELAY, step.filename)])
         self.instructions.extend(self.prepare_instructions(step, init_text))
+        self.step_completed_instructions = 0
+        self.step_total_instructions = len(self.instructions)
 
     def prepare_instructions(self, step, init_text):
         instructions = []
@@ -192,7 +220,11 @@ class ExecutionProcessor(object):
         except IndexError:
             return
         finally:
+            self.step_completed_instructions = self.step_completed_instructions + 1
             self.save()
+
+    def step_progress(self):
+        return float(self.step_completed_instructions) / self.step_total_instructions
 
     @classmethod
     def state_filepath(cls, base_dir):
