@@ -1,11 +1,4 @@
-"""
-TODO:
-1. Recorder
-2. Error messages
-3. Status bar
-"""
-
-import hashlib
+import os
 import os.path
 import pickle
 import random
@@ -16,6 +9,26 @@ import sublime
 import sublime_plugin
 
 from . import ldml
+
+
+PLUGIN_DIR = os.path.dirname(__file__)
+TARGET_MENU_FILE_PATH = os.path.join(PLUGIN_DIR, 'Main.sublime-menu')
+MENU_FILE_PATH_OFF = os.path.join(PLUGIN_DIR, 'Main.sublime-menu.off')
+MENU_FILE_PATH_ON = os.path.join(PLUGIN_DIR, 'Main.sublime-menu.on')
+
+
+def reload_menu():
+    s = sublime.load_settings("Live Demo.sublime-settings")
+    show_live_demo_menu_bar = s.get('show_menu_bar', True)
+    if show_live_demo_menu_bar:
+        menu_file_name = MENU_FILE_PATH_ON
+    else:
+        menu_file_name = MENU_FILE_PATH_OFF
+    copyfile(menu_file_name, TARGET_MENU_FILE_PATH)
+
+
+def plugin_loaded():
+    reload_menu()
 
 
 class LiveDemoLoadCommand(sublime_plugin.TextCommand):

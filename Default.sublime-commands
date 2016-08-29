@@ -85,4 +85,28 @@
          "caption": "Live Demo: Stop",
          "command": "live_demo_stop"
     },
+    {
+         "caption": "Live Demo Recorder: Record to new file",
+         "command": "live_demo_record_to_new_file"
+    },
+    {
+         "caption": "Live Demo Recorder: Record to opened file",
+         "command": "live_demo_record_to_opened_file"
+    },
+    {
+         "caption": "Live Demo Recorder: Finish recording",
+         "command": "live_demo_record_finish"
+    },
+    {
+         "caption": "Live Demo Recorder: Start recording step",
+         "command": "live_demo_start_recording_step"
+    },
+    {
+         "caption": "Live Demo Recorder: Stop recording step",
+         "command": "live_demo_stop_recording_step"
+    },
+    {
+         "caption": "Live Demo Recorder: Cancel recording step",
+         "command": "live_demo_cancel_recording_step"
+    },
 ]
