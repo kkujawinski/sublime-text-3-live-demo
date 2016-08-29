@@ -1,14 +1,14 @@
 import os
 import os.path
-import pickle
 import random
-import tempfile
+from shutil import copyfile
 from collections import deque
 
 import sublime
 import sublime_plugin
 
 from . import ldml
+from .helpers import StatefulProcessor, SublimeTextHelpers
 
 
 PLUGIN_DIR = os.path.dirname(__file__)
@@ -37,20 +37,19 @@ class LiveDemoLoadCommand(sublime_plugin.TextCommand):
         base_filename = os.path.basename(filename)
         helper = SublimeTextHelpers(edit)
         try:
-            recording = ldml.parse(filename)
+            processor = ExecutionProcessor(filename)
         except Exception as e:
             helper.error_message('Error loading recording file %s.\n\n%r' % (base_filename, e))
         else:
-            processor = ExecutionProcessor(recording, SublimeTextHelpers(edit).get_base_dir())
             processor.save()
-            msg = 'Loaded %d steps.\n\n Run "Play next step" command to start.'
+            msg = 'Loaded %d steps.\n\nRun "Play next step" command to start.'
             helper.message_dialog(msg % processor.total_steps)
 
 
 class LiveDemoResetCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         helper = SublimeTextHelpers(edit)
-        processor = ExecutionProcessor.read(SublimeTextHelpers(edit).get_base_dir())
+        processor = ExecutionProcessor.read()
         try:
             processor.reset()
         except:
@@ -58,30 +57,45 @@ class LiveDemoResetCommand(sublime_plugin.TextCommand):
         else:
             helper.message_dialog('Reseted')
 
+    def is_enabled(self, *args, **kwargs):
+        return bool(ExecutionProcessor.read())
+
 
 class LiveDemoNextStep(sublime_plugin.TextCommand):
     def run(self, edit):
         helper = SublimeTextHelpers(edit)
-        processor = ExecutionProcessor.read(SublimeTextHelpers(edit).get_base_dir())
+        processor = ExecutionProcessor.read()
         try:
             processor.next_step()
-        except Exception as e:
+        except Exception:
             helper.error_message('No next step defined.')
             processor.stop()
         else:
             processor.save()
             self.view.run_command("live_demo_play_sub")
 
+    def is_enabled(self, *args, **kwargs):
+        processor = ExecutionProcessor.read()
+        if not processor:
+            return False
+        return processor.has_more_steps()
+
 
 class LiveDemoStopCommand(sublime_plugin.TextCommand):
     def run(self, edit):
-        ExecutionProcessor.read(SublimeTextHelpers(edit).get_base_dir()).stop()
+        ExecutionProcessor.read().stop()
+
+    def is_enabled(self, *args, **kwargs):
+        processor = ExecutionProcessor.read()
+        if not processor:
+            return False
+        return processor.has_more_steps()
 
 
 class LiveDemoPlaySubCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         self.helper = SublimeTextHelpers(edit)
-        processor = ExecutionProcessor.read(self.helper.get_base_dir())
+        processor = ExecutionProcessor.read()
         if processor is None:
             return
         instruction = processor.next_instruction()
@@ -121,50 +135,9 @@ class LiveDemoPlaySubCommand(sublime_plugin.TextCommand):
         sublime.set_timeout(lambda: target_view.run_command("live_demo_play_sub"), delay)
 
 
-class SublimeTextHelpers(object):
-    def __init__(self, edit):
-        self.edit = edit
-        self.window = sublime.active_window()
-
-    def get_base_dir(self):
-        return sublime.active_window().folders()[0]
-
-    def error_message(self, text):
-        sublime.error_message(text)
-
-    def message_dialog(self, text):
-        sublime.message_dialog(text)
-
-    def open_file_tab(self, filename):
-        try:
-            file_path = os.path.join(self.get_base_dir(), filename)
-            return self.window.open_file(file_path)
-        except:
-            return self.window.new_file()
-
-    def write(self, view, text, position=None):
-        if position is None:
-            position = view.sel()[0].begin()
-        view.insert(self.edit, position, text)
-
-    def set_cursor(self, view, position):
-        view.sel().clear()
-        view.sel().add(sublime.Region(position))
-
-    def set_status(self, view, text):
-        view.set_status('live_demo', text)
-
-    def increase_selection(self, view, step=1):
-        selection = view.sel()[0]
-        view.sel().clear()
-        view.sel().add(sublime.Region(selection.a, selection.b + step))
-
-    def erase_selection(self, view):
-        view.erase(self.edit, view.sel()[0])
-
-
-class ExecutionProcessor(object):
+class ExecutionProcessor(StatefulProcessor):
     __VERSION__ = 1
+    STATE_FILE_KEY = 'sublime-live-demo-execution'
 
     OPEN = 1    # open tabe file with give path, args: delay, filename
     MOVE = 2    # move cursor to position, args: delay, position
@@ -174,14 +147,14 @@ class ExecutionProcessor(object):
     INSERT = 6  # insert character, args: delay, character
 
     DEFAULT_DELAY = 70
-    EXECUTION_STATE_FILE = os.path.join(tempfile.gettempdir(), 'sublime-live-demo-execution')
 
-    def __init__(self, recording, base_dir):
+    def __init__(self, filename):
+        recording = ldml.parse(filename)
+        self.filename = filename
         self.recording = recording
         self.current_step = None
         self.instructions = None
         self.changes = None
-        self.base_dir = base_dir
         self.total_steps = len(recording.steps)
         self.step_completed_instructions = None
         self.step_total_instructions = None
@@ -193,12 +166,12 @@ class ExecutionProcessor(object):
             self.current_step = self.current_step + 1
         step = self.recording.steps[self.current_step]
 
-        filepath = os.path.join(self.base_dir, step.filename)
+        filepath = os.path.join(ExecutionProcessor.get_base_dir(), step.filename)
         basedir = os.path.dirname(filepath)
         if not os.path.exists(basedir):
             os.makedirs(basedir)
 
-        if step.empty:
+        if step.clear:
             with open(filepath, 'w'):
                 pass
             init_text = ''
@@ -217,7 +190,8 @@ class ExecutionProcessor(object):
         for start, end, replacement in changes:
             instructions.append((self.MOVE, self.DEFAULT_DELAY, start))
             instructions.extend([(self.SELECT, self.DEFAULT_DELAY / 2)] * (end - start - 1))
-            instructions.append((self.SELECT, self.DEFAULT_DELAY * 10)) # holding selection before removal
+            # hold selection before removal
+            instructions.append((self.SELECT, self.DEFAULT_DELAY * 10))
             instructions.append((self.DELETE, self.DEFAULT_DELAY))
             if step.method == ldml.LDMLStep.PASTE:
                 instructions.append((self.INSERT, self.DEFAULT_DELAY, replacement))
@@ -239,26 +213,14 @@ class ExecutionProcessor(object):
     def step_progress(self):
         return float(self.step_completed_instructions) / self.step_total_instructions
 
-    @classmethod
-    def state_filepath(cls, base_dir):
-        return cls.EXECUTION_STATE_FILE + hashlib.md5(base_dir.encode('utf-8')).hexdigest()
-
-    def save(self):
-        pickle.dump(self, open(ExecutionProcessor.state_filepath(self.base_dir), "wb"))
+    def has_more_steps(self):
+        if self.current_step is None:
+            return True
+        return self.current_step + 1 < len(self.recording.steps)
 
     def reset(self):
         self.current_step = None
         self.save()
 
     def stop(self):
-        try:
-            os.unlink(ExecutionProcessor.state_filepath(self.base_dir))
-        except:
-            pass
-
-    @classmethod
-    def read(cls, base_dir):
-        try:
-            return pickle.load(open(ExecutionProcessor.state_filepath(base_dir), "rb"))
-        except:
-            pass
+        self.delete()
